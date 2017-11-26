@@ -74,16 +74,11 @@ class GenericmessageCommand extends SystemCommand
         $user_id = $message->getFrom()->getId();
         $message_id = $message->getMessageId();
 
-        $conversation = new Conversation(
-            $this->getMessage()->getFrom()->getId(),
-            $this->getMessage()->getChat()->getId()
-        );
+        $this->conversation = new Conversation($user_id, $chat_id, $this->getName());
+
 
         //Fetch conversation command if it exists and execute it
 
-        if ($conversation->exists() && ($command = $conversation->getCommand())) {
-            return $this->telegram->executeCommand($command);
-        }
 
         $notes = &$this->conversation->notes;
         !is_array($notes) && $notes = [];
@@ -91,6 +86,24 @@ class GenericmessageCommand extends SystemCommand
         if (isset($notes['state'])) {
             $state = $notes['state'];
         }
+        if ($text === 'Далее') {
+                    
+                    $data = [];
+                    $data['chat_id'] = $chat_id;
+                    $data['text'] = "Для начала давайте познакомимся! скиньте мне свой контакт.";
+                    $keyboards[] = new Keyboard([
+                        ['text' => 'Поделиться контактом', 'request_contact' => true],
+                    ]);
+                    $keyboard = $keyboards[0]
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(false);
+                    $data['reply_markup'] = $keyboard;
+                    $notes['state'] = '1';
+                    $this->conversation->update();
+                    return Request::sendMessage($data);
+                }
+
 
         switch ($state) {
             case '1': {
@@ -273,7 +286,7 @@ class GenericmessageCommand extends SystemCommand
                     ['text' => 'Моя анкета']], [
                     ['text' => 'Узнать больше о сообществе']], [
                     ['text' => 'Выставить запрос']], [
-                    ['text' => 'Найти Специалиста'],
+                    ['text' => 'Узнать контакт запросившего'],
                 ]);
 
                 $keyboard = $keyboards[0]
@@ -321,7 +334,7 @@ class GenericmessageCommand extends SystemCommand
 
                 }
                 if ($text === "Выставить запрос") {
-                    /*$notes["state"] = "zapros";
+                    $notes["state"] = "zapros";
                    $data = [];
                    $data['chat_id']=$chat_id;
                    $this->conversation->update();
@@ -333,8 +346,8 @@ class GenericmessageCommand extends SystemCommand
                    ->setOneTimeKeyboard(true)
                    ->setSelective(false);
                    $data['reply_markup'] = $keyboard;
-                   return Request::sendMessage($data);*/
-                    $this->telegram->executeCommand(keyboard);
+                   return Request::sendMessage($data);
+                    //$this->telegram->executeCommand(keyboard);
 
                 }
 
@@ -366,7 +379,7 @@ class GenericmessageCommand extends SystemCommand
                 $notes['last_message_id'] = $message->getMessageId();
                 $notes['message'] = $message->getRawData();
                 $notes['message_type'] = $type;
-                $data['text'] = 'Следующим сообщением отправьте мне Ваш запрос(это может быть фото/видео или текст)';
+                $data['text'] = 'Следующим сообщением отправьте мне Ваш запрос';
                 $data["chat_id"] = $chat_id;
                 return Request::sendMessage($data);
                 break;
@@ -374,14 +387,18 @@ class GenericmessageCommand extends SystemCommand
 
             case "zapros1": {
                 $notes['state'] = "zapros2";
-                $this->conversation->update();
+                
                 $data["chat_id"] = $chat_id;
+                $notes['mes_text'] = $text;
                 $notes['message'] = $message->getRawData();
+                $notes['mes2'] = $message->getRawData();
                 $data['text'] = 'Ваш запрос будет выглядеть так:';
                 $result = Request::sendMessage($data);
+                $this->conversation->update();
 
 
                 $this->sendBack(new Message($notes['message'], $this->telegram->getBotUsername()), $data);
+
 
                 $data['reply_markup'] = new Keyboard(
                     [
@@ -402,20 +419,31 @@ class GenericmessageCommand extends SystemCommand
             case "zapros2": {
                 $data['reply_markup'] = Keyboard::remove();
                 $data["chat_id"] = $chat_id;
-                $notes['post_message'] = ($text === 'Да');
-                $notes['caption'] = 'Да';
-                $k = $notes['post_message'];
-                $notes['channel'] = '@alumni_channel';
-                $ch = $notes['channel'];
+               
 
 //Request::sendMessage($data);
 
                 if ($text === 'Да') {
+                    $data = [];
                     $data['chat_id'] = '@alumni_channel';
                     $data['caption'] = 'Да';
-                    $data['text'] = 'Даsadas';
-                    $notes['message'] = $data['text'];
-                    $this->sendBack(new Message($notes['message'], $this->telegram->getBotUsername()), $data);
+                    $data['parse_mode'] = 'html';
+                    $counter_of_req = 1;
+                    $data['text'] = $notes['mes_text']."\n\n <b>Запрос номер $counter_of_req </b>";
+
+                    
+
+
+
+                    //Request::sendMessage($data);
+                    //$notes['message'] = $message->getRawData();
+                    //$this->sendBack(new Message($notes['mes2'], $this->telegram->getBotUsername()), $data);
+                    
+
+
+
+
+                   
 
                 } else {
                     $notes['state'] = "zapros";
@@ -431,7 +459,7 @@ class GenericmessageCommand extends SystemCommand
             default: {
 
 
-                if ($text == 'Далее') {
+                if ($text === 'Далее') {
                     
                     $data = [];
                     $data['chat_id'] = $chat_id;
@@ -449,19 +477,20 @@ class GenericmessageCommand extends SystemCommand
                     return Request::sendMessage($data);
                 }
 
-                /*if ($text === "Меню") {
+                if ($text === "Меню") {
                     $data = [];
                     $data['chat_id'] = $chat_id;
                     $notes['state'] = 'menu';
                     $this->conversation->update();
                     return Request::sendMessage($data);
 
-                }*/
+                }
 
 
                 $data = [];
                 $data['chat_id'] = $chat_id;
-                $data['text'] = "Фраза по умолчанию  $state";
+                $data['text'] = "Фраза по умолчанию  Состояние: $state";
+                
 
                 Request::sendMessage($data);
 
