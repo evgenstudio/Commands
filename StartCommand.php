@@ -46,38 +46,6 @@ class StartCommand extends SystemCommand
         $text = $message->getText(false);
         $user_id = $message->getFrom()->getId();
         $message_id = $message->getMessageId();
-
-		
-			$conversation = new Conversation(
-            $this->getMessage()->getFrom()->getId(),
-            $this->getMessage()->getChat()->getId()
-        );
-		
-		$notes = &$this->conversation->notes;
-        !is_array($notes) && $notes = [];
-        $state = ' ';
-        if (isset($notes['state'])) {
-            $state = $notes['state'];
-        }
-		
-		if ($text == 'Далее') {
-                    $notes['state'] = '1';
-                    $this->conversation->update();
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "Для начала давайте познакомимся! скиньте мне свой контакт.";
-                    $keyboards[] = new Keyboard([
-                         ['text' => 'Поделиться контактом', 'request_contact' => true],
-                    ]);
-                    $keyboard = $keyboards[0]
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(false);
-                    $data['reply_markup'] = $keyboard;
-                     
-                    return Request::sendMessage($data);
-
-        }
 		
         $data = [];
         $data['chat_id'] = $chat_id;
