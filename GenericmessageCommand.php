@@ -12,6 +12,7 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Request;
+use Longman\TelegramBot\DB;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Commands\UserCommand;
 use Longman\TelegramBot\Entities\ReplyKeyboardMarkup;
@@ -76,16 +77,21 @@ class GenericmessageCommand extends SystemCommand
 
         $this->conversation = new Conversation($user_id, $chat_id, $this->getName());
 
-
-        //Fetch conversation command if it exists and execute it
-
-
         $notes = &$this->conversation->notes;
         !is_array($notes) && $notes = [];
         $state = ' ';
         if (isset($notes['state'])) {
             $state = $notes['state'];
         }
+		
+		/*$convers = new Conversation(-1, -1);
+		$not = &$convers;
+        !is_array($not) && $not = [];
+		$st = ' ';
+        if (isset($not['st'])) {
+            $st = $not['st'];
+		}*/
+		
         if ($text === 'Далее') {
                     
                     $data = [];
@@ -112,15 +118,17 @@ class GenericmessageCommand extends SystemCommand
                     $notes['state'] = '1.1';
 					$this->conversation->update();
 
-                    $phone = $this->getMessage()->getContact()->getPhoneNumber();
+                    
                     $firstname = $this->getMessage()->getContact()->getFirstName();
-                    $notes['a'] = $firstname;
                     $lastname = $this->getMessage()->getContact()->getLastName();
-                    $notes['b'] = $lastname;
-                    $notes['c'] = $phone;
+					$phone = $this->getMessage()->getContact()->getPhoneNumber();
+					
+                    /*$not['$chat_id1'] = $firstname;
+                    $not['$chat_id2'] = $lastname;
+                    $not['$chat_id3'] = $phone;*/
+					DB::update('user', ['phone_number' => $phone], ['id' => $chat_id]);
                     $mess = "Имя: " . $firstname . "\nФамилия: " . $lastname . "\nНомер: " . $phone;
-                    $notes['message'] = $mess;
-
+                    $notes['$chat_id'] = $mess;
 
                     $data = [];
                     $data['chat_id'] = $chat_id;
@@ -205,8 +213,8 @@ class GenericmessageCommand extends SystemCommand
                 $data['chat_id'] = $chat_id;
                 //$data['text'] = "Итак, давайте проверим еще раз.";
                 $firstname = $notes['a'];
-                $lastname = $notes['b'];
-                $phone = $notes['c'];
+                $lastname = DB::select('user', $chat_id, 'phone_number');
+                $phone = DB::select('user', $chat_id, 'phone_number');
                 $data['text'] = "Итак, давайте проверим еще раз";
                 Request::sendMessage($data);
                 $data['text'] = "Имя: " . $firstname . "\nФамилия: " . $lastname . "\nНомер:$phone ";
@@ -241,9 +249,11 @@ class GenericmessageCommand extends SystemCommand
                     $data['chat_id'] = $chat_id;
                     $data['text'] = "Поздравляем! Ваша анкета составлена! Я пришлю ее Вам В следующем сообщении.\n Вы всегда можете посмотреть ее и отредактировать в личном кабинете. В разделе: 'Моя анкета'";
                     Request::sendMessage($data);
-                    $firstname = $notes['a'];
+                    $result = DB::select('user', $chat_id, 'first_name');
+					$firstname = $result[0];
                     $lastname = $notes['b'];
-                    $phone = $notes['c'];
+                    $result = DB::select('user', $chat_id, 'phone_number');
+					$phone = $result[0];
                     $compet = $notes['p'];
                     $data['parse_mode'] = 'Markdown';
                     $anket = "*Анкета*\n\nИмя: *$firstname*\nФамилия: *$lastname*\nТелефон: *$phone*\nКомпетенции: *$compet*\nИндекс полезности: *0%*\nИндекс нетворкинга: *0%*";
@@ -426,7 +436,7 @@ class GenericmessageCommand extends SystemCommand
                 if ($text === 'Да') {
                     $data = [];
                     $data['chat_id'] = '@alumni_channel';
-                    $data['caption'] = 'Да';
+                    //$data['caption'] = 'Да';
                     $data['parse_mode'] = 'html';
                     $counter_of_req = 1;
                     $data['text'] = $notes['mes_text']."\n\n <b>Запрос номер $counter_of_req </b>";
