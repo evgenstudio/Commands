@@ -83,70 +83,119 @@ class GenericmessageCommand extends SystemCommand
         if (isset($notes['state'])) {
             $state = $notes['state'];
         }
-		
-		/*$convers = new Conversation(-1, -1);
-		$not = &$convers;
-        !is_array($not) && $not = [];
-		$st = ' ';
-        if (isset($not['st'])) {
-            $st = $not['st'];
-		}*/
+
+        //$command = $conversation->getCommand();
+		//if ($conversation->exists() && ($command == "checkusers")) {
+           // return $this->telegram->executeCommand($command);
+        //}
 		
         if ($text === 'Далее') {
-                    
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "Для начала давайте познакомимся! скиньте мне свой контакт.";
-                    $keyboards[] = new Keyboard([
-                        ['text' => 'Поделиться контактом', 'request_contact' => true],
-                    ]);
-                    $keyboard = $keyboards[0]
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(false);
-                    $data['reply_markup'] = $keyboard;
-                    $notes['state'] = '1';
-                    $this->conversation->update();
-                    return Request::sendMessage($data);
-                }
+
+            $data = [];
+            $data['chat_id'] = $chat_id;
+            $data['text'] = "Для начала давайте познакомимся! скиньте мне свой контакт.";
+            $keyboards[] = new Keyboard([
+                ['text' => 'Поделиться контактом', 'request_contact' => true],
+            ]);
+            $keyboard = $keyboards[0]
+                ->setResizeKeyboard(true)
+                ->setOneTimeKeyboard(true)
+                ->setSelective(false);
+            $data['reply_markup'] = $keyboard;
+            $notes['state'] = '1';
+            $this->conversation->update();
+            return Request::sendMessage($data);
+        }
 
 
         switch ($state) {
             case '1': {
                 if ($this->getMessage()->getContact()) {
                     $data['action'] = 'typing';
-                    $notes['state'] = '1.1';
-					$this->conversation->update();
 
-                    
+
                     $firstname = $this->getMessage()->getContact()->getFirstName();
                     $lastname = $this->getMessage()->getContact()->getLastName();
-					$phone = $this->getMessage()->getContact()->getPhoneNumber();
+                    $phone = $this->getMessage()->getContact()->getPhoneNumber();
 					
-                    /*$not['$chat_id1'] = $firstname;
-                    $not['$chat_id2'] = $lastname;
-                    $not['$chat_id3'] = $phone;*/
-					DB::update('user', ['phone_number' => $phone], ['id' => $chat_id]);
-                    $mess = "Имя: " . $firstname . "\nФамилия: " . $lastname . "\nНомер: " . $phone;
-                    $notes['$chat_id'] = $mess;
+					$result = DB::select('user', $chat_id, 'phone_number');
+					$ph = $result[0];
+					
+					if ($ph == NULL){
+                    $res = CheckPhone($phone);
+                    if ($res){
+                        $notes['state'] = '1.1';
+                        $this->conversation->update();
 
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "$mess";
-                    $keyboards[] = new Keyboard([
-                        ['text' => 'Всё верно'],
-                        ['text' => 'Ввести вручную'],
-                    ]);
+						$ft = fopen("req_id.txt", "r");
+						$req_id = fgets($ft);
+						fclose($ft);
+						DB::update('user', ['id_req' => $req_id],['id' => $chat_id]);
+						$req_id++;
 
-                    $keyboard = $keyboards[0]
-                        ->setResizeKeyboard(true)
-                        ->setOneTimeKeyboard(true)
-                        ->setSelective(false);
-                    $data['reply_markup'] = $keyboard;
-                    
+						$ft = fopen("req_id.txt", "w");
+						fwrite($ft, $req_id);
+						fclose($ft);
+						
+                        DB::update('user', ['phone_number' => $phone], ['id' => $chat_id]);
+						DB::update('user', ['permission' => 1], ['id' => $chat_id]);
+                        $mess = "Имя: " . $firstname . "\nФамилия: " . $lastname . "\nНомер: " . $phone;
+                        $notes['$chat_id'] = $mess;
+
+                        $data = [];
+                        $data['chat_id'] = $chat_id;
+                        $data['text'] = "$mess";
+                        $keyboards[] = new Keyboard([
+                            ['text' => 'Всё верно'],
+                            ['text' => 'Ввести вручную'],
+                        ]);
+
+                        $keyboard = $keyboards[0]
+                            ->setResizeKeyboard(true)
+                            ->setOneTimeKeyboard(true)
+                            ->setSelective(false);
+                        $data['reply_markup'] = $keyboard;
+
+                        return Request::sendMessage($data);
+                    }
+                    else {
+                        $notes['state'] = 'no_perm';
+                        $this->conversation->update();
+                        $data = [];
+                        $data['chat_id'] = $chat_id;
+                        $data['text'] = "Номера $phone нет в базе данных. Обратитесь к администратору.";
+						return Request::sendMessage($data);
+                    }
+					}
+					else {
+						$data = [];
+                $data['chat_id'] = $chat_id;
+
+                $data['action'] = 'typing';
+                Request::sendChatAction($data);
+
+                $text = "Вы уже зарегистрированы в системе!\nДобро пожаловать в главное меню";
+                $data['text'] = $text;
+
+                $keyboards[] = new Keyboard([
+                    ['text' => 'Моя анкета']], [
+                    ['text' => 'Узнать больше о сообществе']], [
+                    ['text' => 'Выставить запрос']], [
+                    ['text' => 'Узнать контакт запросившего'],
+                ]);
+
+                $keyboard = $keyboards[0]
+                    ->setResizeKeyboard(true)
+                    ->setOneTimeKeyboard(true)
+                    ->setSelective(false);
+                $data['reply_markup'] = $keyboard;
+
+                $notes['state'] = 'to__menu';
+                $this->conversation->update();
 
 
-                    return Request::sendMessage($data);
+                return Request::sendMessage($data);
+					}
                 }
 
                 break;
@@ -185,33 +234,33 @@ class GenericmessageCommand extends SystemCommand
                     return Request::sendMessage($data);
                 }
             }
-             case "1.2": {
-                    $notes['state'] = '1.3';
-                    $notes["about"] = $text;
-                    $this->conversation->update();
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "География Ваше деятельности: где Вы живете, в каких городах чаще всего находитесь?\n Укажите одним сообщением несколько городов";
-                    return Request::sendMessage($data);
+            case "1.2": {
+                $notes['state'] = '1.3';
+                $notes["about"] = $text;
+                $this->conversation->update();
+                $data = [];
+                $data['chat_id'] = $chat_id;
+                $data['text'] = "География Ваше деятельности: где Вы живете, в каких городах чаще всего находитесь?\n Укажите одним сообщением несколько городов";
+                return Request::sendMessage($data);
             }
             case "1.3": {
-                    $notes['state'] = '1.4';
-                    $notes["geography"] = $text;
-                    $this->conversation->update();
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "Какие у Вас сейчас потребности? Что ищете?";
-                    return Request::sendMessage($data);
+                $notes['state'] = '1.4';
+                $notes["geography"] = $text;
+                $this->conversation->update();
+                $data = [];
+                $data['chat_id'] = $chat_id;
+                $data['text'] = "Какие у Вас сейчас потребности? Что ищете?";
+                return Request::sendMessage($data);
             }
             case "1.4": {
-                    $notes['state'] = 'anket';
-                    $notes["needs"] = $text;
-                    $this->conversation->update();
-                    $data = [];
-                    $data['chat_id'] = $chat_id;
-                    $data['text'] = "Что можете предложить со своей стороны?";
-                    return Request::sendMessage($data);
-            }            
+                $notes['state'] = 'anket';
+                $notes["needs"] = $text;
+                $this->conversation->update();
+                $data = [];
+                $data['chat_id'] = $chat_id;
+                $data['text'] = "Что можете предложить со своей стороны?";
+                return Request::sendMessage($data);
+            }
             case 'add_cont': {
                 if ($text) {
                     //$a= " ";
@@ -284,11 +333,11 @@ class GenericmessageCommand extends SystemCommand
                     $data['text'] = "Поздравляем! Ваша анкета составлена! Я пришлю ее Вам В следующем сообщении.\n Вы всегда можете посмотреть ее и отредактировать в личном кабинете. В разделе: 'Моя анкета'";
                     Request::sendMessage($data);
                     $result = DB::select('user', $chat_id, 'first_name');
-					$firstname = $result[0];
+                    $firstname = $result[0];
                     $result = DB::select('user', $chat_id, 'last_name');
                     $lastname = $result[0];
                     $result = DB::select('user', $chat_id, 'phone_number');
-					$phone = $result[0];
+                    $phone = $result[0];
                     $result = DB::select('user', $chat_id, 'network_rate');
                     $network_rate = $result[0];
                     $needs = $notes["needs"];
@@ -407,31 +456,47 @@ class GenericmessageCommand extends SystemCommand
                 }
                 if ($text === "Выставить запрос") {
                     $notes["state"] = "zapros";
-                   $data = [];
-                   $data['chat_id']=$chat_id;
-                   $this->conversation->update();
-                   $data['text']="Перейти к вводу запроса";
-                   $keyboards[] = new Keyboard([
-                   ['text' => 'Продолжить']]);
-                   $keyboard = $keyboards[0]
-                   ->setResizeKeyboard(true)
-                   ->setOneTimeKeyboard(true)
-                   ->setSelective(false);
-                   $data['reply_markup'] = $keyboard;
-                   return Request::sendMessage($data);
+                    $data = [];
+                    $data['chat_id']=$chat_id;
+                    $this->conversation->update();
+                    $data['text']="Перейти к вводу запроса";
+                    $keyboards[] = new Keyboard([
+                        ['text' => 'Продолжить']]);
+                    $keyboard = $keyboards[0]
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(false);
+                    $data['reply_markup'] = $keyboard;
+                    return Request::sendMessage($data);
                     //$this->telegram->executeCommand(keyboard);
 
                 }
                 if ($text === "Узнать контакт запросившего") {
-                   $notes["state"] = "know_req";
-                   $data = [];
-                   $data['chat_id']=$chat_id;
-                   $this->conversation->update();
-                   $data['text']="Введите номер запроса";
-                   
-                   return Request::sendMessage($data);
+                    $notes["state"] = "know_req";
+                    $data = [];
+                    $data['chat_id']=$chat_id;
+                    $this->conversation->update();
+                    $data['text']="Введите номер запроса";
+
+                    return Request::sendMessage($data);
                     //$this->telegram->executeCommand(keyboard);
                 }
+                if ($text === "Узнать больше о сообществе") {
+                    $notes["state"] = "menu";
+                    $data = [];
+                    $myarr = [];
+                    $myarr["re"] = "ru";
+                    $myarr["ru"] = "re";
+                    $myarr = serialize($myarr);
+                    DB::update('user', ['req_feedback' => $myarr],['id' => $chat_id]);
+                    $data['chat_id']=$chat_id;
+                    $this->conversation->update();
+                    $data['text']="А вот тут проверка массива";
+
+                    return Request::sendMessage($data);
+                    //$this->telegram->executeCommand(keyboard);
+                }
+
 
 
                 break;
@@ -439,22 +504,43 @@ class GenericmessageCommand extends SystemCommand
             case "know_req" : {
                 //Нужно будет сделать проверку на номер, по-хорошему
                 $num = $text;
+				$length = strlen($num);
                 settype($num, "integer");
 
-                
+
+
                 if($num !== 0) {
-                    //$data["text"] = "Да, $p целое $num  число $set";
                     $data["chat_id"] = $chat_id;
-                    //Request::sendMessage($data);
+                    
                     $notes["find_req"] = $num;
-                    $result = DB::selectID('user', $num, 'request');
-                    $req = $result[0];
+                    $req_id = substr($num, 0, 3);
+                    $req_num = substr($num, 3);
+
+
+                    //$data["text"] = "Да, $req_id целое $num $req_num  число $set";
+                    //Request::sendMessage($data);
+					
+					$array = DB::selectbyreqid('user', $req_id, 'req_counter');
+					$tmp = json_decode($array[0]);
+					$count = -1;
+					for ($i = 0; $i < count($tmp); $i++)
+						if ($tmp[$i] == $req_num) $count = $i;
+					
+					//$string = json_encode($tmp);
+					//DB::update('user', ['req_counter' => $string], ['id' => $chat_id]);
+					
+                    $result = DB::selectbyreqid('user', $req_id, 'request');
+					$tmp = json_decode($result[0]);
+                    $req = $tmp[$count];
                     if($req==""){
                         $data["text"] = "Нет запроса с таким номером, введите другой номер";
                         $data["chat_id"] = $chat_id;
                         $notes["state"] = "know_req";
                         $this->conversation->update();
                         return Request::sendMessage($data);
+                    }
+                    else{
+
                     }
                     //$data["text"] = "req $req ";
                     //$data["chat_id"] = $chat_id;
@@ -467,8 +553,8 @@ class GenericmessageCommand extends SystemCommand
                     $this->conversation->update();
                     return Request::sendMessage($data);
                 }
-               
-                
+
+
                 $notes["state"] = "know_req_cont";
                 $this->conversation->update();
                 $data["text"] = "Следующим сообщением я пришлю Вам запрос, проверьте, это он?";
@@ -478,11 +564,11 @@ class GenericmessageCommand extends SystemCommand
                 $keyboards[] = new Keyboard([
                     ['text' => 'Да'],
                     ['text' => 'Нет']]);
-                   $keyboard = $keyboards[0]
-                   ->setResizeKeyboard(true)
-                   ->setOneTimeKeyboard(true)
-                   ->setSelective(false);
-                   $data['reply_markup'] = $keyboard;
+                $keyboard = $keyboards[0]
+                    ->setResizeKeyboard(true)
+                    ->setOneTimeKeyboard(true)
+                    ->setSelective(false);
+                $data['reply_markup'] = $keyboard;
 
                 return Request::sendMessage($data);
 
@@ -499,12 +585,14 @@ class GenericmessageCommand extends SystemCommand
                     $user_req_lastname = $result[0];
                     $result = DB::selectID('user', $num, 'phone_number');
                     $phone_number = $result[0];
+					$result = DB::selectID('user', $num, 'id');
+                    $id = $result[0];
 
 
-                     $data["chat_id"] = $chat_id;
+                    $data["chat_id"] = $chat_id;
                     //$data["text"] = "Приятного общения)";
                     $keyboards[] = new Keyboard([
-                    ['text' => 'Вернуться в меню']]);
+                        ['text' => 'Вернуться в меню']]);
                     $keyboard = $keyboards[0]
                         ->setResizeKeyboard(true)
                         ->setOneTimeKeyboard(true)
@@ -519,13 +607,23 @@ class GenericmessageCommand extends SystemCommand
                     $data["last_name"] = $user_req_lastname;
                     $data["user_id"] = $user_req_id;
 
-                   
-                    Request::sendContact($data);
-                   
 
+                    Request::sendContact($data);
+					
+					$array = DB::select('user', $id, 'my_req');
+					$tmp = json_decode($array[0]);
+					$count = 0;
+					for ($i = 0; $i < count($tmp); $i++)
+						if(strcmp($tmp[$i], $chat_id) == 0) $count = 1;
+					if ($count != 1)
+					{
+						$tmp[count($tmp)] = $chat_id;
+						$string = json_encode($tmp);
+						DB::update('user', ['my_req' => $string], ['phone_number' => $phone_number]);
+					}
                     $notes["state"] = "menu";
                     $this->conversation->update();
-
+					//$data["text"] = $count;
                     return  Request::sendMessage($data);
                 }
                 else{
@@ -537,6 +635,7 @@ class GenericmessageCommand extends SystemCommand
             }
             case "zapros" : {
 //Здесь все, что касается отправки в канал
+		
                 in_array($type, ['command', 'text'], true) && $type = 'message';
 
                 $text = trim($message->getText(true));
@@ -568,7 +667,7 @@ class GenericmessageCommand extends SystemCommand
 
             case "zapros1": {
                 $notes['state'] = "zapros2";
-                
+
                 $data["chat_id"] = $chat_id;
                 $notes['mes_text'] = $text;
                 $notes['message'] = $message->getRawData();
@@ -600,7 +699,7 @@ class GenericmessageCommand extends SystemCommand
             case "zapros2": {
                 $data['reply_markup'] = Keyboard::remove();
                 $data["chat_id"] = $chat_id;
-               
+
 
 //Request::sendMessage($data);
 
@@ -612,16 +711,32 @@ class GenericmessageCommand extends SystemCommand
                     $ft = fopen("req_num.txt", "r");
                     $req_counter = fgets($ft);
                     fclose($ft);
+					
+					$array = DB::select('user', $chat_id, 'req_counter');
+					$tmp = json_decode($array[0]);
+					$tmp[count($tmp)] = $req_counter;
+					$string = json_encode($tmp);
+					DB::update('user', ['req_counter' => $string], ['id' => $chat_id]);
+
                     $req_counter = $req_counter+1;
                     $ft = fopen("req_num.txt", "w");
                     fwrite($ft, $req_counter);
                     fclose($ft);
 
                     $request = $notes['mes_text'];
-                    $data['text'] = $notes['mes_text']."\n\n <b>Запрос номер $req_counter </b>";
-                    DB::update('user', ['request' => $request],['id' => $chat_id]);
-                    DB::update('user', ['req_counter' => $req_counter],['id' => $chat_id]);
-                    Request::sendMessage($data);
+					$array = DB::select('user', $chat_id, 'request');
+					$tmp = json_decode($array[0]);
+					$tmp[count($tmp)] = $notes['mes_text'];
+					$string = json_encode($tmp);
+					DB::update('user', ['request' => $string], ['id' => $chat_id]);
+
+					$req_counter--;
+					
+					$result = DB::select('user', $chat_id, 'id_req');
+                    $wid = $result[0];
+                    $data['text'] = $notes['mes_text']."\n\n <b>Запрос номер $wid$req_counter </b>";
+                   
+    				Request::sendMessage($data);
                     $data['chat_id'] = $chat_id;
                     $data['text'] = "Ваш запрос успешно отправлен";
                     $keyboards[] = new Keyboard([
@@ -633,25 +748,25 @@ class GenericmessageCommand extends SystemCommand
                         ->setSelective(false);
                     $data['reply_markup'] = $keyboard;
 
-                    
+
 
 
 
                     //Request::sendMessage($data);
                     //$notes['message'] = $message->getRawData();
                     //$this->sendBack(new Message($notes['mes2'], $this->telegram->getBotUsername()), $data);
-                    
 
 
 
 
-                   
+
+
 
                 } else {
-                     $data['text'] = "Вы можете вернуться в меню";
-                //$notes['state'] = "menu";
-                //$this->conversation->update();
-                 $keyboards[] = new Keyboard([
+                    $data['text'] = "Вы можете вернуться в меню";
+                    //$notes['state'] = "menu";
+                    //$this->conversation->update();
+                    $keyboards[] = new Keyboard([
                         ['text' => 'Вернуться в меню'],
                     ]);
                     $keyboard = $keyboards[0]
@@ -665,14 +780,14 @@ class GenericmessageCommand extends SystemCommand
 
 
                 return Request::sendMessage($data);
-				break;
+                break;
             }
 
             default: {
 
 
                 if ($text === 'Далее') {
-                    
+
                     $data = [];
                     $data['chat_id'] = $chat_id;
                     $data['text'] = "Для начала давайте познакомимся! скиньте мне свой контакт.";
@@ -684,7 +799,7 @@ class GenericmessageCommand extends SystemCommand
                         ->setOneTimeKeyboard(true)
                         ->setSelective(false);
                     $data['reply_markup'] = $keyboard;
-					$notes['state'] = '1';
+                    $notes['state'] = '1';
                     $this->conversation->update();
                     return Request::sendMessage($data);
                 }
@@ -702,7 +817,7 @@ class GenericmessageCommand extends SystemCommand
                 $data = [];
                 $data['chat_id'] = $chat_id;
                 $data['text'] = "Фраза по умолчанию  Состояние: $state";
-                
+
 
                 Request::sendMessage($data);
 
@@ -763,4 +878,22 @@ class GenericmessageCommand extends SystemCommand
 
         return $response;
     }
+
+
+}
+
+function CheckPhone ($phone)
+{
+$path = "/var/www/html/alumni/data.txt";
+$fp = file($path);
+$n = count($fp);
+$count = 0;
+
+for ($i = 0; $i < $n; $i++)
+{
+	$count += strcmp($phone, $fp[i]);
+	if ($count == strlen($phone)) return true;
+	$count = 0;
+}
+return false;
 }
