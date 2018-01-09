@@ -13,6 +13,7 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Request;
+use Longman\TelegramBot\DB;
 use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Entities\ReplyKeyboardMarkup;
 use Longman\TelegramBot\Commands\UserCommand;
@@ -50,6 +51,41 @@ class StartCommand extends SystemCommand
         $data = [];
         $data['chat_id'] = $chat_id;
         $data['parse_mode'] ='MARKDOWN';
+
+
+        
+
+        if (preg_match("/zappros/i", $text)){
+
+
+
+            $data["text"] = "Я скину Вам контакт человека";
+            //Request::sendMessage($data);
+
+
+        
+
+            $num = substr($text, 14);
+            $s = "Запрос $num";
+
+
+
+            $keyboards[] = new Keyboard([
+                    ['text' => $s]]
+            );
+
+            $keyboard = $keyboards[0]
+                ->setResizeKeyboard(true)
+                ->setOneTimeKeyboard(true)
+                ->setSelective(false);
+            $data['reply_markup'] = $keyboard;
+
+
+            return Request::sendMessage($data);
+
+
+
+        }
 
 
         $data['action'] = 'typing';

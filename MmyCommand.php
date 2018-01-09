@@ -43,6 +43,9 @@ class MmyCommand extends UserCommand
         $user_id = $message->getFrom()->getId();
         $message_id = $message->getMessageId();
 
+
+        $admin_id = 156512090;
+
         $this->conversation = new Conversation($user_id, $chat_id, $this->getName());
 
         $notes = &$this->conversation->notes;
@@ -53,10 +56,28 @@ class MmyCommand extends UserCommand
         }
 
 
+        if($chat_id != $admin_id){
+             $data['text'] = "К сожалению, Вы не администратор. ";
+             $data["chat_id"] = $chat_id;
+             $notes['state'] = '1';
+             $this->conversation->update();
 
-                    $notes['state'] = '1';
-                    $this->conversation->update();
-                    $data = [];
+
+
+              return Request::sendMessage($data);
+
+
+        }
+
+        $data["text"] = "Привет! Здесь можно посмотреть людей, ожидающих подтверджения контакта";
+        $data["chat_id"] = $chat_id;
+        Request::sendMessage($data);
+
+
+
+                $notes['state'] = '1';
+                $this->conversation->update();
+                $data = [];
 
                    
 
