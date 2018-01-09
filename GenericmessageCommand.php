@@ -193,8 +193,13 @@ class GenericmessageCommand extends SystemCommand
                     $phone = $this->getMessage()->getContact()->getPhoneNumber();
 
 
+<<<<<<< HEAD
 					DB::update('user', ['phone_number' => $phone], ['id' => $chat_id]);
 					$result = DB::select('user', $chat_id, 'permission');
+=======
+					//DB::update('user', ['phone_number' => $phone], ['id' => $chat_id]);
+					$result = DB::select('user', $chat_id, 'phone_number');
+>>>>>>> origin/master
 					$ph = $result[0];
 					
 					if ($ph == 0){
@@ -240,6 +245,7 @@ class GenericmessageCommand extends SystemCommand
                         $this->conversation->update();
                         $data = [];
                         $data['chat_id'] = $chat_id;
+<<<<<<< HEAD
                         $data['text'] = "Вашего номера $phone нет в базе данных. Ваш контакт будет отправлен администратору для утверждения. ";
 						
 						$array = DB::select('user', '505199722', 'request');
@@ -254,6 +260,13 @@ class GenericmessageCommand extends SystemCommand
 							$tmp[] = $chat_id;
 						}
 
+=======
+                        $data['text'] = "Номера $phone нет в базе данных. Обратитесь к администратору.";
+						
+						$array = DB::select('user', '505199722', 'request');
+						$tmp = json_decode($array[0], true);
+						$tmp["$num"][count($tmp["$num"])]  = "$chat_id";					
+>>>>>>> origin/master
 						$string = json_encode($tmp);
 						DB::update('user', ['request' => $string], ['id' => '505199722']);
 					
@@ -275,7 +288,10 @@ class GenericmessageCommand extends SystemCommand
                     ['text' => 'Узнать больше о сообществе']], [
                     ['text' => 'Выставить запрос']], [
                     ['text' => 'Откликнувшиеся на запрос']], [
+<<<<<<< HEAD
                     ['text' => 'Оценить человека']], [
+=======
+>>>>>>> origin/master
                     ['text' => 'Узнать контакт запросившего'],
                 ]);
 
@@ -534,7 +550,10 @@ class GenericmessageCommand extends SystemCommand
                     ['text' => 'Узнать больше о сообществе']], [
                     ['text' => 'Выставить запрос']], [
                     ['text' => 'Откликнувшиеся на запрос']], [
+<<<<<<< HEAD
                     ['text' => 'Оценить человека']], [
+=======
+>>>>>>> origin/master
                     ['text' => 'Узнать контакт запросившего'],
                 ]);
 
@@ -628,12 +647,37 @@ class GenericmessageCommand extends SystemCommand
                 if ($text === "Откликнувшиеся на запрос") {
                     $notes["state"] = "req_answerrers";
                     $data = [];
+<<<<<<< HEAD
                     $data['chat_id']=$chat_id;
                     $this->conversation->update();
                      $data['text']="Узнать контакты людей(оценить), откликнувшихся на мой запрос.";
                      //$data['reply_markup'] = Keyboard::remove();
                     $keyboards[] = new Keyboard([
                         ['text' => 'Продолжить']]);
+=======
+
+                    //$myarr = [];
+                    //$myarr["re"] = "ru";
+                    //$myarr["ru"] = "re";
+                    //$myarr = serialize($myarr);
+                    //DB::update('user', ['req_feedback' => $myarr],['id' => $chat_id]);
+                    $data['chat_id']=$chat_id;
+                    $this->conversation->update();
+                    $data['text']="Узнать людей, кто откликнулся на мой запрос.";
+                     //$data['reply_markup'] = Keyboard::remove();
+                    $keyboards[] = new Keyboard([
+                        ['text' => 'Продолжить']]);
+
+                    $keyboard = $keyboards[0]
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(false);
+                    $data['reply_markup'] = $keyboard;
+
+                    return Request::sendMessage($data);
+                    //$this->telegram->executeCommand(keyboard);
+                }
+>>>>>>> origin/master
 
                     $keyboard = $keyboards[0]
                         ->setResizeKeyboard(true)
@@ -792,6 +836,7 @@ class GenericmessageCommand extends SystemCommand
                 return Request::sendMessage($data);
                 break;
             }
+<<<<<<< HEAD
             case 'show_req_person': {
                 $a = $text;
                 $mass = $notes["requested"];
@@ -825,10 +870,108 @@ class GenericmessageCommand extends SystemCommand
                 $this->conversation->update();
                 //$data['reply_markup'] = Keyboard::remove();
 
+=======
+            case "req_answerrers": {
+            	//DB::update('user', ['anket_needs' => $text], ['id' => $chat_id]);
+                //$notes['state'] = 'anket';
+                //$notes["needs"] = $text;
+                //$this->conversation->update();
+                $data = [];
+                $data['chat_id'] = $chat_id;
+                $result = DB::select('user', $chat_id, 'my_req');
+                $tmp = json_decode($result[0]);
+                $count = count($tmp);
+                $data['text'] = "У Вас имеется $count запросов";
+                Request::sendMessage($data);
+                $data['text'] = "Вы можете выбрать один из запросов из списка ниже";
+                //Request::sendMessage($data);
+
+               
+                $notes["state"] = "req_answerrers_zapros";
+
+                $this->conversation->update();
+
+                return Request::sendMessage($data);
+            }
+            case "req_answerrers_zapros": {
+            	
+                $data = [];
+                $data['chat_id'] = $chat_id;
+                $result = DB::select('user', $chat_id, 'my_req');
+                $tmp = json_decode($result[0]);
+                $count = count($tmp);
+                $i =0;
+                 $keyboard = [];
+                foreach ($tmp as $key => &$val) {
+                    $data['text'] .= " Запрос $key";
+                    $keyboard[] = [$key];
+                    $i++;
+                }
+
+                $data['text'] = "У Вас имеется $i запросов";
+
+
+
+
+               // Request::sendMessage($data);
+                                    
+                    $data['reply_markup'] = new Keyboard(
+                        [
+                            'keyboard'          => $keyboard,
+                            'resize_keyboard'   => true,
+                            'one_time_keyboard' => true,
+                            'selective'         => true,
+                        ]
+                    );
+                $notes["state"] = "show_by_zapros";
+
+                $this->conversation->update();
+
+                return Request::sendMessage($data);
+            }
+             case 'show_by_zapros': {
+
+                if ($text) {
+                    $a = $text;
+                    $result = DB::select('user', $chat_id, 'my_req');
+                    $tmp = json_decode($result[0]);
+                    $p = $tmp -> $a;
+                    $l = count($p);
+                    $data = [];
+                    $data['chat_id'] = $chat_id;
+                    $data['text'] = "На этот запрос откликнулось $l человек";
+
+                    $keyboard = [];
+                    $mass = [];
+
+                    foreach ($p as $asdas) {
+                        //$data['text'] .= " Запрос $key";
+                        $mass[]= $asdas;
+                        $asdass = getName2($asdas);
+                        $keyboard[] = [$asdass];
+                        //$i++;
+                    }
+                    $notes["requested"] = $mass;
+
+                    $data['reply_markup'] = new Keyboard(
+                        [
+                            'keyboard'          => $keyboard,
+                            'resize_keyboard'   => true,
+                            'one_time_keyboard' => true,
+                            'selective'         => true,
+                        ]
+                    );
+                    $notes['state'] = 'show_req_person';
+                    $this->conversation->update();
+                    //$data['reply_markup'] = Keyboard::remove();
+
+                }
+>>>>>>> origin/master
 
                 return Request::sendMessage($data);
                 break;
             }
+<<<<<<< HEAD
 
            case 'rate_person': {
                 $data = [];
@@ -855,12 +998,74 @@ class GenericmessageCommand extends SystemCommand
                 
                 $notes['state'] = 'rate_person_final';
                 $this->conversation->update();
+=======
+            case 'show_req_person': {
+
+                    $a = $text;
+                    $mass = $notes["requested"];
+                    $text="Трабл";
+                    $data = [];
+                    $data['chat_id'] = $chat_id;
+                    $k = 0;
+
+                    for($i=0; $i<count($mass); $i++){
+                    	$k = $mass[$i];
+                    	$p = getName2($k);
+                    	if($a = $p){
+                    		$text = getAnket($k);
+                    		break;
+                    	}
+                    }
+                    $notes["rate_person"] = $k;
+                    $data['parse_mode'] = "Markdown";
+                   	$data['text'] = $text;
+                  // $data['parse_mode'] = 'html';
+                    
+                    $notes['state'] = 'rate_person';
+                    $this->conversation->update();
+                    //$data['reply_markup'] = Keyboard::remove();
+
+
+                return Request::sendMessage($data);
+                break;
+            }
+            case 'rate_person': {
+
+                    
+                    $data = [];
+                    $data['chat_id'] = $chat_id;
+                    $k = $notes["rate_person"];
+                    $p = getName2($k);
+                    $data['text'] = "Вы можете поставить рейтинг $p";
+
+                    $keyboards[] = new Keyboard([
+                    ['text' => '1⭐️']],[
+                    ['text' => '2⭐️']],[
+                    ['text' => '3⭐️']],[
+                    ['text' => '4⭐️']],[
+                    ['text' => '5⭐️']],[
+                    ['text' => 'Вернуться в меню'],
+                ]);
+                    $keyboard = $keyboards[0]
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(false);
+                    $data['reply_markup'] = $keyboard;
+                    //$data['parse_mode'] = "Markdown";
+                   	//$data['text'] = $text;
+                  // $data['parse_mode'] = 'html';
+                    
+                    $notes['state'] = 'rate_person_final';
+                    $this->conversation->update();
+                    //$data['reply_markup'] = Keyboard::remove();
+>>>>>>> origin/master
 
 
                 return Request::sendMessage($data);
                 break;
             }
             case 'rate_person_final': {
+<<<<<<< HEAD
         		$n = substr($text, 0, 1);
                 $data = [];
                 $data['chat_id'] = $chat_id;
@@ -916,6 +1121,70 @@ class GenericmessageCommand extends SystemCommand
 
             return Request::sendMessage($data);
             break;
+=======
+            		$n = substr($text, 0, 1);
+
+                    $data = [];
+                    $data['chat_id'] = $chat_id;
+                    $k = $notes["rate_person"];
+                    $p = getName2($k);
+                    $array = DB::select('user', $k, 'network_rate');
+                   	$net_rate = $array[0];
+
+                   	$array = DB::select('user', $k, 'network_raters');
+                   	$tmp = json_decode($array[0], true);
+                   	$tmp["$chat_id"] = $n;
+
+                   	$counter = 0;
+                   	$i = 0;
+
+
+                   	foreach ($tmp as $key => &$val) {
+					    //$data['text'] .= " Запрос $key";
+					    //$keyboard[] = [$key];
+					    $counter = $counter + $val;
+					    $i++;
+					}
+
+
+                   	//if($t == 0){
+                   		//$tmp[] = $chat_id;
+                   		//$net_common = $net_common + $n;
+                   	//}
+                   	$network_rate = $counter/ $i;
+
+                   	$string = json_encode($tmp);
+					DB::update('user', ['network_rate' => $network_rate], ['id' => $k]);
+
+					DB::update('user', ['network_raters' => $string], ['id' => $k]);
+
+
+
+
+
+
+                    $data['text'] = "Вы поставили рейтинг $n пользователю сумма $counter количество людей $i";
+
+                    $keyboards[] = new Keyboard([
+                    ['text' => 'Вернуться в меню']
+                ]);
+                    $keyboard = $keyboards[0]
+                        ->setResizeKeyboard(true)
+                        ->setOneTimeKeyboard(true)
+                        ->setSelective(false);
+                    $data['reply_markup'] = $keyboard;
+                    //$data['parse_mode'] = "Markdown";
+                   	//$data['text'] = $text;
+                  // $data['parse_mode'] = 'html';
+                    
+                    $notes['state'] = 'menu';
+                    $this->conversation->update();
+                    //$data['reply_markup'] = Keyboard::remove();
+
+
+                return Request::sendMessage($data);
+                break;
+>>>>>>> origin/master
             }
 
             case "know_req" : {
@@ -1095,8 +1364,13 @@ class GenericmessageCommand extends SystemCommand
 					$count = 0;
 					//for ($i = 0; $i < count($tmp); $i++)
 					//	if(strcmp($tmp[$i], $chat_id) == 0) $count = 1;
+<<<<<<< HEAD
 					//$data["text"] = "k = $k, p = $p";
 					//Request::sendMessage($data);
+=======
+					$data["text"] = "k = $k, p = $p";
+					Request::sendMessage($data);
+>>>>>>> origin/master
 
 
 					if ($count != 1)
@@ -1187,6 +1461,12 @@ class GenericmessageCommand extends SystemCommand
                 
                 if ($text === 'В Alun') {
                     $data = [];
+<<<<<<< HEAD
+=======
+                    $data['chat_id'] = -1001153931560;
+                    //$data['caption'] = 'Да';
+                    $data['parse_mode'] = 'html';
+>>>>>>> origin/master
                     $ft = fopen("req_num.txt", "r");
                     $req_counter = fgets($ft);
                     fclose($ft);
@@ -1224,6 +1504,7 @@ class GenericmessageCommand extends SystemCommand
 					$string2 = json_encode($array2);
 					DB::update('user', ['req_value' => $string2], ['id' => $chat_id]);
 
+<<<<<<< HEAD
                     $inline_keyboard = new InlineKeyboard([
                         ['text' => 'Узнать контакт', 'url' => "https://t.me/Alumniunion_bot?start=zappros$wid$req_counter"],
                     ]);
@@ -1238,6 +1519,10 @@ class GenericmessageCommand extends SystemCommand
                         'reply_markup' => $inline_keyboard,
                     ];
                     //$data['text'] = $notes['mes_text']."\n\n<b>Запрос номер $wid$req_counter</b> <a href=\"https://t.me/Alumniunion_bot?start=zappros$wid$req_counter\">Ссылка</a>\n";
+=======
+                    $data['text'] = $notes['mes_text']."\n\n<b>Запрос номер $wid$req_counter </b> \n";
+                   
+>>>>>>> origin/master
     				Request::sendMessage($data);
                      $data["chat_id"] = $smartoffice_id;
                     $data["message_id"] = $notes["mes_id"];
@@ -1626,6 +1911,7 @@ function getAnket( $anket_id){
     $an_about = $result[0];
     $result = DB::select('user', $anket_id, 'anket_offer');
     $an_offer = $result[0];
+<<<<<<< HEAD
     $result = DB::select('user', $anket_id, 'business_rate');
     $bus_rate = $result[0];
     if(!$bus_rate){
@@ -1640,6 +1926,11 @@ function getAnket( $anket_id){
 
     $data['parse_mode'] = 'Markdown';
     $anket = "*Анкета*\n\nИмя: *$an_firstname*\nФамилия: *$an_lastname*\nТелефон: *$an_phone*\nО себе: *$an_about*\nГеография: *$an_geography* \nПотребности: *$an_needs*\nПредложение: *$an_offer*\nИндекс полезности: *$an_network_rate*\nДеловая репутация: *$bus_rate*\nКоличество откликов: *$req_res*";
+=======
+
+    $data['parse_mode'] = 'Markdown';
+    $anket = "*Анкета*\n\nИмя: *$an_firstname*\nФамилия: *$an_lastname*\nТелефон: *$an_phone*\nО себе: *$an_about*\nГеография: *$an_geography* \nПотребности: *$an_needs*\nПредложение: *$an_offer*\nИндекс полезности: *$an_network_rate%*";
+>>>>>>> origin/master
     return $anket;  
 
 }
@@ -1654,6 +1945,10 @@ function getName2($anket_id){
     return $name;
 
 
+<<<<<<< HEAD
 }
 
 
+=======
+}
+>>>>>>> origin/master
